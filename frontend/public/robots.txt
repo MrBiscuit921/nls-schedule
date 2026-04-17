@@ -1,0 +1,5 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow: /admin/
+Disallow: /admin/login
+Sitemap: https://nls-schedule.vercel.app/sitemap.xml
