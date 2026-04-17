@@ -217,7 +217,7 @@ export default function PublicSchedule() {
   }
 }, [nextSession, rounds]);
 
-  if (!rounds.length) return <div className="wrap">Loading schedule...</div>;
+  if (!rounds.length) return <div className="wrap">Fetching schedule... (may take a moment on first load)</div>;
 
   return (
     <div className="wrap">
