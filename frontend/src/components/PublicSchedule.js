@@ -75,7 +75,7 @@ const matchStreamToSession = (session, streams, roundName, dayLabel) => {
   } else if (label.includes("top qualifying")) {
     // Top Qualifying
     searchKeyword = "top-qualifying";
-  } else if (label.includes("race 2") || label.includes("nls5")) {
+  } else if (label.includes("race 2") || label.includes("nls")) {
     // Race 2
     searchKeyword = "race 2";
   }
@@ -238,6 +238,12 @@ export default function PublicSchedule() {
     return nextSession && nextSession.roundId === round.id;
   };
 
+  const IsSessionPast = (session) => {
+    const endDateStr = session.endDate || session.date;
+    const endDate = convertToUTC(endDateStr, session.end, session.endMin || 0);
+    return new Date() > endDate;
+  };
+
   const renderSessions = (round) => {
     return round.days.map((day, idx) => (
       <div key={idx} className="day-block">
@@ -275,9 +281,12 @@ export default function PublicSchedule() {
             day.label,
           );
           const isStreamLive = matchedStream && matchedStream.status === "live";
+          const isSessionPast = IsSessionPast(session) && !isStreamLive;
 
           return (
-            <div key={sidx} className={`session-display-row ${isStreamLive ? `live ${session.type}` : ` ${session.type}`}`}>
+            <div
+              key={sidx}
+              className={`session-display-row ${isStreamLive ? `live ${session.type}` : ` ${session.type}`} ${isSessionPast ? "past" : ""}`}>
               {/* Left side: session label + YouTube button */}
               <div className="session-left">
                 <span className={`session-type ${session.type}`}>
@@ -288,7 +297,8 @@ export default function PublicSchedule() {
                     className={`session-youtube-btn ${isStreamLive ? "live" : ""}`}
                     onClick={() => window.open(matchedStream.url, "_blank")}
                     title={"Watch live on YouTube"}>
-                    { isStreamLive ? "LIVE NOW" : ""}<FaYoutube size={18} />
+                    {isStreamLive ? "LIVE NOW" : ""}
+                    <FaYoutube size={18} />
                   </button>
                 )}
               </div>
