@@ -68,6 +68,8 @@
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
   --transition-slow: 350ms ease;
+
+  --nls-youtube-red: #ff0000;
 }
 
 /* === Base Reset & Typography === */
@@ -428,6 +430,12 @@ h4 {
     box-shadow var(--transition-fast);
 }
 
+.session-display-row.live {
+  border-color: var(--nls-youtube-red);
+  border-width: 2px;
+  border-style: solid;
+}
+
 .session-display-row:hover {
   background-color: var(--nls-gray-200);
   box-shadow: var(--shadow-sm);
@@ -457,14 +465,17 @@ h4 {
   display: inline-flex;
   align-items: center;
   color: #aaa;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
 }
 
 .session-youtube-btn.live {
-  color: #ff0000;
-}
-
-.session-youtube-btn.live:hover {
-  transform: scale(1.15);
+  color: var(--nls-youtube-red);
+  align-items: center;
 }
 
 .session-type {

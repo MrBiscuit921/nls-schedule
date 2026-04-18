@@ -277,7 +277,7 @@ export default function PublicSchedule() {
           const isStreamLive = matchedStream && matchedStream.status === "live";
 
           return (
-            <div key={sidx} className="session-display-row">
+            <div key={sidx} className={`session-display-row ${isStreamLive ? `live ${session.type}` : ` ${session.type}`}`}>
               {/* Left side: session label + YouTube button */}
               <div className="session-left">
                 <span className={`session-type ${session.type}`}>
@@ -287,8 +287,8 @@ export default function PublicSchedule() {
                   <button
                     className={`session-youtube-btn ${isStreamLive ? "live" : ""}`}
                     onClick={() => window.open(matchedStream.url, "_blank")}
-                    title="Watch on YouTube">
-                    <FaYoutube size={18} />
+                    title={"Watch live on YouTube"}>
+                    { isStreamLive ? "LIVE NOW" : ""}<FaYoutube size={18} />
                   </button>
                 )}
               </div>
