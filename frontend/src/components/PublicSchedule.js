@@ -1,10 +1,13 @@
 import {useEffect, useState} from "react";
 import axios from "axios";
+import {FaYoutube} from "react-icons/fa";
+
+import "../nls-styles.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
 const convertToUTC = (dateStr, hour, minute = 0) => {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  const [year, month, day] = dateStr.split("-").map(Number);
   const monthIndex = month - 1;
   const isCEST = monthIndex >= 2 && monthIndex <= 9;
   const offset = isCEST ? 2 : 1;
@@ -13,29 +16,90 @@ const convertToUTC = (dateStr, hour, minute = 0) => {
 
 const formatLocalTime = (date, userTZ) => {
   try {
-    return date.toLocaleString("en-US", { timeZone: userTZ, weekday: "short", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleString("en-US", {
+      timeZone: userTZ,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
-    return date.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleString("en-US", {hour: "2-digit", minute: "2-digit"});
   }
 };
 
 const getRoundStartDate = (round) => {
   let earliest = null;
-  round.days.forEach(day => {
-    day.sessions.forEach(session => {
-      const startDate = convertToUTC(session.date, session.start, session.startMin || 0);
+  round.days.forEach((day) => {
+    day.sessions.forEach((session) => {
+      const startDate = convertToUTC(
+        session.date,
+        session.start,
+        session.startMin || 0,
+      );
       if (!earliest || startDate < earliest) earliest = startDate;
     });
   });
   return earliest;
 };
 
+const matchStreamToSession = (session, streams, roundName, dayLabel) => {
+  if (!streams || streams.length === 0) return null;
+
+  const dayOfWeek = dayLabel.split(" ")[0].toLowerCase(); // "saturday" or "sunday"
+  const label = session.label.toLowerCase();
+
+  // Determine which keyword to look for in the stream title
+  let searchKeyword = null;
+
+  if (
+    label.includes("qualifying") &&
+    !label.includes("top") &&
+    dayOfWeek === "saturday"
+  ) {
+    // Qualifying (Race 1) on Saturday
+    searchKeyword = "samstag";
+  } else if (
+    label.includes("race") &&
+    !label.includes("2") &&
+    dayOfWeek === "saturday"
+  ) {
+    // Race 1 on Saturday
+    searchKeyword = "saturday";
+  } else if (
+    label.includes("qualifying") &&
+    !label.includes("top") &&
+    dayOfWeek === "sunday"
+  ) {
+    // Qualifying (Race 2) on Sunday
+    searchKeyword = "sonntag";
+  } else if (label.includes("top qualifying")) {
+    // Top Qualifying
+    searchKeyword = "top-qualifying";
+  } else if (label.includes("race 2") || label.includes("nls5")) {
+    // Race 2
+    searchKeyword = "race 2";
+  }
+
+  if (!searchKeyword) return null;
+
+  // Find the stream whose title contains the keyword
+  return streams.find(
+    (stream) =>
+      stream.title.toLowerCase().includes(roundName.toLowerCase()) &&
+      stream.title.toLowerCase().includes(searchKeyword),
+  );
+};
+
 const sortDays = (round) => {
   return [...round.days].sort((a, b) => {
     const getEarliest = (day) => {
       let earliest = null;
-      day.sessions.forEach(session => {
-        const startDate = convertToUTC(session.date, session.start, session.startMin || 0);
+      day.sessions.forEach((session) => {
+        const startDate = convertToUTC(
+          session.date,
+          session.start,
+          session.startMin || 0,
+        );
         if (!earliest || startDate < earliest) earliest = startDate;
       });
       return earliest;
@@ -62,39 +126,51 @@ export default function PublicSchedule() {
     seconds: 0,
   });
   const [userTZ, setUserTZ] = useState("");
+  const [streams, setStreams] = useState([]);
 
   useEffect(() => {
-  const fetchRounds = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/rounds`);
-      let roundsData = res.data;
-      
-      // Sort rounds by earliest session start date
-      roundsData.sort((a, b) => {
-        const dateA = getRoundStartDate(a);
-        const dateB = getRoundStartDate(b);
-        return dateA - dateB;
-      });
-      
-      // Sort days and sessions
-      roundsData = roundsData.map(round => ({
-        ...round,
-        days: sortDays(round).map(day => ({
-          ...day,
-          sessions: sortSessions(day.sessions)
-        }))
-      }));
-      
-      setRounds(roundsData);
-    } catch (err) {
-      console.error("Error fetching rounds:", err);
-    }
-  };
+    const fetchRounds = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/rounds`);
+        let roundsData = res.data;
 
-  fetchRounds();
-  setUserTZ(Intl.DateTimeFormat().resolvedOptions().timeZone);
-}, []);
+        // Sort rounds by earliest session start date
+        roundsData.sort((a, b) => {
+          const dateA = getRoundStartDate(a);
+          const dateB = getRoundStartDate(b);
+          return dateA - dateB;
+        });
 
+        // Sort days and sessions
+        roundsData = roundsData.map((round) => ({
+          ...round,
+          days: sortDays(round).map((day) => ({
+            ...day,
+            sessions: sortSessions(day.sessions),
+          })),
+        }));
+
+        setRounds(roundsData);
+      } catch (err) {
+        console.error("Error fetching rounds:", err);
+      }
+    };
+
+    fetchRounds();
+    setUserTZ(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }, []);
+
+  useEffect(() => {
+    const fetchStreams = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/youtube/streams`);
+        setStreams(res.data);
+      } catch (err) {
+        console.error("Error fetching YouTube streams:", err);
+      }
+    };
+    fetchStreams();
+  }, []);
 
   useEffect(() => {
     if (!rounds.length) return;
@@ -172,7 +248,7 @@ export default function PublicSchedule() {
             session.start,
             session.startMin || 0,
           );
-          const endDateStr = session.endDate || session.date; // use endDate if provided, else same day
+          const endDateStr = session.endDate || session.date;
           const endDate = convertToUTC(
             endDateStr,
             session.end,
@@ -192,13 +268,36 @@ export default function PublicSchedule() {
             formatLocalTime(startDate) +
             (endDate ? ` - ${formatLocalTime(endDate)}` : "");
 
+          const matchedStream = matchStreamToSession(
+            session,
+            streams,
+            round.name,
+            day.label,
+          );
+          const isStreamLive = matchedStream && matchedStream.status === "live";
+
           return (
-            <div key={sidx} className="session-row">
-              <span className={`session-type ${session.type}`}>
-                {session.label}
-              </span>
-              <span className="session-local">{localStr}</span>
-              <span className="session-cet">{cetStr}</span>
+            <div key={sidx} className="session-display-row">
+              {/* Left side: session label + YouTube button */}
+              <div className="session-left">
+                <span className={`session-type ${session.type}`}>
+                  {session.label}
+                </span>
+                {matchedStream && (
+                  <button
+                    className={`session-youtube-btn ${isStreamLive ? "live" : ""}`}
+                    onClick={() => window.open(matchedStream.url, "_blank")}
+                    title="Watch on YouTube">
+                    <FaYoutube size={18} />
+                  </button>
+                )}
+              </div>
+
+              {/* Right side: local time + CET time */}
+              <div className="session-right">
+                <span className="session-local">{localStr}</span>
+                <span className="session-cet">{cetStr}</span>
+              </div>
             </div>
           );
         })}
@@ -207,17 +306,24 @@ export default function PublicSchedule() {
   };
 
   useEffect(() => {
-  if (rounds.length > 0 && nextSession) {
-    const nextRoundIndex = rounds.findIndex(r => r.id === nextSession.roundId);
-    if (nextRoundIndex > 0) {
-      const nextRound = rounds[nextRoundIndex];
-      const otherRounds = rounds.filter(r => r.id !== nextSession.roundId);
-      setRounds([nextRound, ...otherRounds]);
+    if (rounds.length > 0 && nextSession) {
+      const nextRoundIndex = rounds.findIndex(
+        (r) => r.id === nextSession.roundId,
+      );
+      if (nextRoundIndex > 0) {
+        const nextRound = rounds[nextRoundIndex];
+        const otherRounds = rounds.filter((r) => r.id !== nextSession.roundId);
+        setRounds([nextRound, ...otherRounds]);
+      }
     }
-  }
-}, [nextSession, rounds]);
+  }, [nextSession, rounds]);
 
-  if (!rounds.length) return <div className="wrap">Fetching schedule... (may take a moment on first load)</div>;
+  if (!rounds.length)
+    return (
+      <div className="wrap">
+        Fetching schedule... (may take a moment on first load)
+      </div>
+    );
 
   return (
     <div className="wrap">
