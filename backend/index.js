@@ -35,6 +35,7 @@ app.get("/", (req, res) => {
 app.use("/api/rounds", require("./routes/rounds"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/youtube", require("./routes/youtube"));
+app.use("/api/classifications", require("./routes/classifications"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
