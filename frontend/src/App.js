@@ -5,6 +5,7 @@ import RoundList from './components/admin/RoundList';
 import RoundForm from './components/admin/RoundForm';
 import Navbar from './components/Navbar';
 import Standings from './components/standings';
+import { Analytics } from "@vercel/analytics/react"
 
 import './nls-styles.css';
 
@@ -12,6 +13,7 @@ function App() {
   return (
     <BrowserRouter>
       <Navbar />
+      <Analytics />
       <Routes>
         <Route path="/" element={<PublicSchedule />} />
         <Route path="/admin/login" element={<AdminLogin />} />
