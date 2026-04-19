@@ -253,41 +253,83 @@ function postProcessRows(rows) {
 
   if (!filtered.length) return [];
 
-  // Merge rows that share the same Pos + Team (multiple drivers listed separately
-  // for the same car entry, e.g. Black Falcon with 4 drivers across 2 wiki rows)
   const posKey = "Pos." in filtered[0] ? "Pos." : "Pos";
   const teamKey = "Team" in filtered[0] ? "Team" : null;
+  const driverKey = "Driver" in filtered[0] ? "Driver" : null;
+
+  // Determine merge strategy:
+  // - Driver tables (has Driver col): merge on Pos+Driver — same driver raced
+  //   for multiple teams, so combine team names and fill round results.
+  // - Team tables (no Driver col): merge on Pos+Team — same team entry split
+  //   across rows due to Wikipedia rowspan on the position cell.
+  const isDriverTable = !!driverKey;
 
   const merged = [];
-  const seen = new Map(); // key: "pos|team" → index in merged
+  const seen = new Map();
 
   for (const row of filtered) {
     const pos = String(row[posKey] || "").trim();
     const team = teamKey ? String(row[teamKey] || "").trim() : "";
-    const mergeKey = `${pos}|${team}`;
+    const driver = driverKey ? String(row[driverKey] || "").trim() : "";
 
-    if (teamKey && team && seen.has(mergeKey)) {
-      // Merge drivers into existing row
+    // Normalise driver string for keying (strip class badges like " Am", " J" etc.)
+    const driverNorm = driver.replace(/\s+(Am|PA|J|Pro)$/i, "").trim();
+
+    // For driver tables we need two merge strategies:
+    //   A) Same Pos + same Team → merge co-drivers (same car, Wikipedia split them across rows)
+    //   B) Same Pos + same Driver → merge teams (same driver raced in different cars)
+    // Check A first, then B.
+    const sameTeamKey = `${pos}|${team}`;
+    const sameDriverKey = `${pos}|${driverNorm}`;
+    const mergeKey = isDriverTable
+      ? seen.has(sameTeamKey)
+        ? sameTeamKey
+        : sameDriverKey
+      : sameTeamKey; // team tables always merge on pos+team
+
+    if (seen.has(mergeKey)) {
       const existing = merged[seen.get(mergeKey)];
-      const driverCol = "Driver" in existing ? "Driver" : null;
-      if (driverCol && row[driverCol]) {
-        const existingDrivers = String(existing[driverCol] || "").trim();
-        const newDrivers = String(row[driverCol] || "").trim();
-        if (newDrivers && !existingDrivers.includes(newDrivers)) {
-          existing[driverCol] = existingDrivers
-            ? `${existingDrivers} ${newDrivers}`
-            : newDrivers;
+      const isSameTeamMerge = mergeKey === sameTeamKey;
+
+      if (isDriverTable && !isSameTeamMerge) {
+        // Strategy B: same driver, different team → append team name
+        if (teamKey && team) {
+          const existTeams = String(existing[teamKey] || "").trim();
+          if (!existTeams.includes(team)) {
+            existing[teamKey] = existTeams ? `${existTeams} / ${team}` : team;
+          }
+        }
+      } else {
+        // Strategy A: same team, different driver row → append driver name
+        if (driverKey && driver) {
+          const existDrivers = String(existing[driverKey] || "").trim();
+          if (driver && !existDrivers.includes(driver)) {
+            existing[driverKey] = existDrivers
+              ? `${existDrivers} ${driver}`
+              : driver;
+          }
+        }
+        // Also register the sameDriverKey so future rows for this driver merge correctly
+        if (isDriverTable) {
+          seen.set(sameDriverKey, seen.get(sameTeamKey));
         }
       }
-      // Merge any non-empty race result cells that the existing row is missing
+
+      // Fill in any round result cells the existing row is missing
       for (const k of Object.keys(row)) {
-        if (k === posKey || k === driverCol || k === teamKey) continue;
+        if (k === posKey || k === driverKey || k === teamKey) continue;
         const existVal = String(existing[k] || "").trim();
         const newVal = String(row[k] || "").trim();
         if (!existVal && newVal) existing[k] = newVal;
       }
     } else {
-      seen.set(mergeKey, merged.length);
+      const idx = merged.length;
+      seen.set(mergeKey, idx);
+      // Register both keys so either can find this row later
+      if (isDriverTable) {
+        seen.set(sameTeamKey, idx);
+        seen.set(sameDriverKey, idx);
+      }
       merged.push({...row});
     }
   }
