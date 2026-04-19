@@ -112,7 +112,8 @@ export default function Standings() {
           const classification = String(row._Classification).toLowerCase();
           if (
             classification !== "gesamtwertung (overall)" &&
-            classification !== "overall"
+            classification !== "overall" &&
+            classification !== "nls speed-trophäe (overall)"
           ) {
             classes.add(row._Classification);
           }
@@ -186,11 +187,12 @@ export default function Standings() {
       if (posValue === "—" || posValue === "-" || posValue === "") {
         return false;
       }
-      // Skip Gesamtwertung (Overall) classifications
+      // Skip overall classifications (Gesamtwertung, NLS Speed-Trophäe Overall)
       const classification = String(row._Classification || "").toLowerCase();
       if (
         classification === "gesamtwertung (overall)" ||
-        classification === "overall"
+        classification === "overall" ||
+        classification === "nls speed-trophäe (overall)"
       ) {
         return false;
       }
