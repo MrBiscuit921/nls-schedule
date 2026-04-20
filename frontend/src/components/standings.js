@@ -214,14 +214,14 @@ export default function Standings() {
     let headers;
     if (isTeamTable) {
       // Team standings: Pos, Team, Class (classification), Points, race results
-      const priorityHeaders = [
-        "Pos.",
-        "Pos",
-        "Team",
-        "Teams",
-        "_Classification",
-        "Points",
-      ];
+      // const priorityHeaders = [
+      //   "Pos.",
+      //   "Pos",
+      //   "Team",
+      //   "Teams",
+      //   "_Classification",
+      //   "Points",
+      // ];
       const raceHeaders = allHeaders.filter(
         (h) =>
           h.startsWith("NLS") ||
